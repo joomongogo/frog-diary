@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Frog AI Diary</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <p class="app-kicker">Frog AI Diary</p>
+      <h1>개구리 사육 일기</h1>
+    </header>
+
+    <!-- 개구리 이름과 대표 사진 -->
+    <section class="card" aria-labelledby="profile-title">
+      <h2 id="profile-title">내 개구리</h2>
+      <div class="profile-row">
+        <div class="photo-frame">
+          <img id="profile-photo" alt="개구리 프로필 사진" hidden>
+          <span class="photo-placeholder" id="profile-placeholder" aria-hidden="true">🐸</span>
+        </div>
+        <div class="profile-fields">
+          <p class="profile-name" id="profile-display-name">이름을 적어 주세요</p>
+          <label for="frog-name">개구리 이름</label>
+          <input id="frog-name" type="text" maxlength="20" placeholder="예: 콩이" autocomplete="off">
+          <label class="file-button">
+            사진 바꾸기
+            <input id="profile-photo-input" type="file" accept="image/*">
+          </label>
+          <p class="save-hint" id="profile-saved" hidden>저장됨</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 오늘 사육 기록 입력 -->
+    <section class="card" aria-labelledby="today-title">
+      <h2 id="today-title">오늘의 사육 일기</h2>
+      <form id="diary-form">
+        <label for="entry-date">날짜</label>
+        <input id="entry-date" name="date" type="date" required>
+
+        <p class="field-label" id="entry-photo-label">오늘 찍은 개구리 사진</p>
+        <div class="photo-pick">
+          <label class="file-button">
+            사진 고르기
+            <input id="entry-photo-input" name="photo" type="file" accept="image/*" aria-labelledby="entry-photo-label">
+          </label>
+          <div class="photo-frame photo-frame-diary">
+            <img id="entry-photo-preview" alt="오늘 고른 사진 미리보기" hidden>
+            <span class="photo-placeholder" id="entry-photo-placeholder" aria-hidden="true">📷</span>
+          </div>
+        </div>
+
+        <label for="entry-food">오늘 먹은 먹이</label>
+        <input id="entry-food" name="food" type="text" maxlength="40" placeholder="예: 초파리">
+
+        <label for="entry-amount">먹은 양 또는 마릿수</label>
+        <input id="entry-amount" name="amount" type="text" maxlength="40" placeholder="예: 4마리">
+
+        <label for="entry-memo">개구리의 상태 / 행동 메모</label>
+        <textarea id="entry-memo" name="memo" rows="4" maxlength="500" placeholder="예: 오늘은 평소보다 조금 굼뜸"></textarea>
+
+        <p class="form-message" id="form-message" hidden></p>
+        <button type="submit" class="primary-button">오늘 기록 저장하기</button>
+      </form>
+    </section>
+
+    <!-- 다음 버전: AI 조언이 이 자리에 표시됩니다. v0.1에서는 비워 둡니다. -->
+
+    <!-- 저장된 이전 기록 -->
+    <section class="card" aria-labelledby="history-title">
+      <h2 id="history-title">이전 사육 일기</h2>
+      <div id="entry-list"></div>
+    </section>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
