@@ -8,6 +8,11 @@
 </head>
 <body>
   <main class="app">
+    <nav class="frog-bar" aria-label="개구리 고르기">
+      <div id="frog-bar-list" class="frog-bar-list"></div>
+      <button type="button" id="add-frog-button" class="frog-add">추가</button>
+    </nav>
+
     <header class="app-header">
       <p class="app-kicker">Frog AI Diary</p>
       <h1>개구리 사육 일기</h1>
@@ -30,6 +35,7 @@
             <input id="profile-photo-input" type="file" accept="image/*">
           </label>
           <p class="save-hint" id="profile-saved" hidden>저장됨</p>
+          <button type="button" id="delete-frog-button" class="delete-button" hidden>이 개구리 지우기</button>
         </div>
       </div>
     </section>

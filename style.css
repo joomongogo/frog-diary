@@ -29,7 +29,103 @@ body {
 .app {
   width: min(640px, 100%);
   margin: 0 auto;
-  padding: 24px 16px 48px;
+  padding: 0 16px 48px;
+}
+
+.frog-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 -16px;
+  padding: 10px 16px;
+  background: rgba(243, 250, 245, 0.94);
+  border-bottom: 2px solid var(--line);
+}
+
+.frog-bar-list {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.frog-chip,
+.frog-add {
+  appearance: none;
+  min-height: 48px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.frog-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 180px;
+  padding: 4px 12px 4px 4px;
+}
+
+.frog-chip.is-selected {
+  border-color: var(--leaf);
+  background: var(--mint);
+  color: var(--leaf-deep);
+}
+
+.frog-chip-photo {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--mint);
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.frog-chip-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.frog-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.frog-add {
+  padding: 0 16px;
+  background: var(--leaf);
+  color: #fff;
+  border-color: var(--leaf);
+}
+
+.frog-add:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.frog-chip:focus-visible,
+.frog-add:focus-visible {
+  outline: 3px solid #b7e0c4;
+  outline-offset: 2px;
+}
+
+.app-header {
+  padding-top: 18px;
 }
 
 .app-kicker {
@@ -263,6 +359,10 @@ input[type="file"] {
   background: #fff;
   color: var(--danger);
   border: 2px solid #f0c8c4;
+}
+
+#delete-frog-button {
+  margin-top: 14px;
 }
 
 @media (max-width: 520px) {

@@ -3,9 +3,13 @@
 
 // --- 저장 키 ---
 const STORAGE_KEYS = {
-  profile: "frogDiary.profile",
+  frogs: "frogDiary.frogs",
   entries: "frogDiary.entries",
+  // 예전 버전은 개구리 한 마리만 이 키에 저장했습니다.
+  legacyProfile: "frogDiary.profile",
 };
+
+const MAX_FROGS = 10;
 
 // 긴 변을 이 길이에 맞추고, JPEG로 줄여서 용량을 낮춥니다.
 const MAX_IMAGE_EDGE = 800;
@@ -15,7 +19,9 @@ const JPEG_QUALITY = 0.7;
 let entryPhotoData = null;
 let entryPhotoToken = 0;
 let profileSavedTimer = null;
-// 화면과 저장소가 같은 프로필을 보도록 메모리에 하나 들고 있습니다.
+// 등록된 개구리 목록과, 지금 고른 개구리입니다.
+let frogs = [];
+let selectedId = "";
 let profile = { name: "", photo: null };
 
 const profileNameInput = document.getElementById("frog-name");
@@ -24,6 +30,11 @@ const profilePhotoInput = document.getElementById("profile-photo-input");
 const profilePhoto = document.getElementById("profile-photo");
 const profilePlaceholder = document.getElementById("profile-placeholder");
 const profileSaved = document.getElementById("profile-saved");
+const frogBarList = document.getElementById("frog-bar-list");
+const addFrogButton = document.getElementById("add-frog-button");
+const deleteFrogButton = document.getElementById("delete-frog-button");
+const todayTitle = document.getElementById("today-title");
+const historyTitle = document.getElementById("history-title");
 
 const diaryForm = document.getElementById("diary-form");
 const entryDateInput = document.getElementById("entry-date");
@@ -65,18 +76,29 @@ function isSafeImage(value) {
   return typeof value === "string" && value.startsWith("data:image/");
 }
 
-function loadProfile() {
-  const data = readJson(STORAGE_KEYS.profile, null);
-  const name = data && typeof data.name === "string" ? data.name : "";
-  const photo = data && isSafeImage(data.photo) ? data.photo : null;
-  return { name: name, photo: photo };
+function normalizeFrog(frog) {
+  return {
+    id: frog && typeof frog.id === "string" ? frog.id : makeId(),
+    name: frog && typeof frog.name === "string" ? frog.name : "",
+    photo: frog && isSafeImage(frog.photo) ? frog.photo : null,
+  };
 }
 
-function saveProfile(profile) {
-  return writeJson(STORAGE_KEYS.profile, profile);
+function currentFrog() {
+  const found = frogs.find(function (frog) {
+    return frog.id === selectedId;
+  });
+  return found || frogs[0];
 }
 
-function loadEntries() {
+function saveFrogs() {
+  return writeJson(STORAGE_KEYS.frogs, {
+    selectedId: selectedId,
+    frogs: frogs,
+  });
+}
+
+function loadAllEntries() {
   const data = readJson(STORAGE_KEYS.entries, []);
   if (!Array.isArray(data)) {
     return [];
@@ -86,8 +108,57 @@ function loadEntries() {
   });
 }
 
-function saveEntries(entries) {
-  return writeJson(STORAGE_KEYS.entries, entries);
+// 지금 고른 개구리의 일기만 돌려줍니다.
+function loadEntries() {
+  const frogId = currentFrog().id;
+  return loadAllEntries().filter(function (entry) {
+    return entry.frogId === frogId;
+  });
+}
+
+// 다른 개구리의 일기는 그대로 두고, 지금 개구리 일기만 바꿉니다.
+function saveEntries(entriesForFrog) {
+  const frogId = currentFrog().id;
+  const others = loadAllEntries().filter(function (entry) {
+    return entry.frogId !== frogId;
+  });
+  return writeJson(STORAGE_KEYS.entries, others.concat(entriesForFrog));
+}
+
+function loadFrogs() {
+  const saved = readJson(STORAGE_KEYS.frogs, null);
+  if (saved && Array.isArray(saved.frogs) && saved.frogs.length > 0) {
+    frogs = saved.frogs.slice(0, MAX_FROGS).map(normalizeFrog);
+    const stillThere = frogs.some(function (frog) {
+      return frog.id === saved.selectedId;
+    });
+    selectedId = stillThere ? saved.selectedId : frogs[0].id;
+    return;
+  }
+
+  // 예전에 저장해 둔 개구리 한 마리가 있으면 첫 개구리로 가져옵니다.
+  const oldProfile = readJson(STORAGE_KEYS.legacyProfile, null);
+  const first = normalizeFrog({
+    id: makeId(),
+    name: oldProfile && oldProfile.name,
+    photo: oldProfile && oldProfile.photo,
+  });
+  frogs = [first];
+  selectedId = first.id;
+
+  const entries = loadAllEntries().map(function (entry) {
+    if (!entry.frogId) {
+      entry.frogId = first.id;
+    }
+    return entry;
+  });
+  saveFrogs();
+  writeJson(STORAGE_KEYS.entries, entries);
+  try {
+    localStorage.removeItem(STORAGE_KEYS.legacyProfile);
+  } catch (error) {
+    // 예전 키를 지우지 못해도 새 저장은 이미 끝났습니다.
+  }
 }
 
 // --- 날짜 ---
@@ -172,27 +243,86 @@ function showProfileSaved() {
   }, 1500);
 }
 
+function frogLabel(frog) {
+  return frog.name || "이름 없음";
+}
+
+function renderFrogBar() {
+  frogBarList.textContent = "";
+  frogs.forEach(function (frog) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "frog-chip" + (frog.id === selectedId ? " is-selected" : "");
+    button.setAttribute("aria-pressed", frog.id === selectedId ? "true" : "false");
+
+    const photo = document.createElement("span");
+    photo.className = "frog-chip-photo";
+    if (isSafeImage(frog.photo)) {
+      const image = document.createElement("img");
+      image.src = frog.photo;
+      image.alt = "";
+      photo.appendChild(image);
+    } else {
+      photo.textContent = "🐸";
+    }
+
+    const name = document.createElement("span");
+    name.className = "frog-chip-name";
+    name.textContent = frogLabel(frog);
+    button.appendChild(photo);
+    button.appendChild(name);
+    button.addEventListener("click", function () {
+      selectFrog(frog.id);
+    });
+    frogBarList.appendChild(button);
+  });
+
+  const full = frogs.length >= MAX_FROGS;
+  addFrogButton.disabled = full;
+  addFrogButton.title = full ? "개구리는 10마리까지만 등록할 수 있어요." : "개구리 추가";
+  const selectedChip = frogBarList.querySelector(".is-selected");
+  if (selectedChip) {
+    selectedChip.scrollIntoView({ inline: "nearest", block: "nearest" });
+  }
+}
+
+function updateSectionTitles() {
+  const name = profile.name.trim();
+  todayTitle.textContent = name ? name + "의 오늘 일기" : "오늘의 사육 일기";
+  historyTitle.textContent = name ? name + "의 이전 일기" : "이전 사육 일기";
+}
+
 function renderProfile() {
-  profile = loadProfile();
+  profile = currentFrog();
   profileNameInput.value = profile.name;
   profileDisplayName.textContent = profile.name || "이름을 적어 주세요";
   showPhoto(profilePhoto, profilePlaceholder, profile.photo);
+  deleteFrogButton.hidden = frogs.length <= 1;
+  renderFrogBar();
+  updateSectionTitles();
 }
 
 function commitProfileName() {
   const name = profileNameInput.value.trim();
   profileDisplayName.textContent = name || "이름을 적어 주세요";
   if (profile.name === name) {
-    return;
+    updateSectionTitles();
+    return true;
   }
   const previousName = profile.name;
   profile.name = name;
-  if (!saveProfile(profile)) {
+  if (!saveFrogs()) {
     profile.name = previousName;
     profileDisplayName.textContent = previousName || "이름을 적어 주세요";
-    return;
+    return false;
   }
+  // 바를 바로 다시 그리면, 이름 칸에서 다른 개구리를 누를 때 클릭이 사라집니다.
+  window.setTimeout(function () {
+    renderFrogBar();
+    updateSectionTitles();
+  }, 0);
   showProfileSaved();
+  return true;
 }
 
 async function onProfilePhotoChange() {
@@ -209,13 +339,15 @@ async function onProfilePhotoChange() {
     const previousPhoto = profile.photo;
     profile.name = name;
     profile.photo = photo;
-    if (!saveProfile(profile)) {
+    if (!saveFrogs()) {
       profile.name = previousName;
       profile.photo = previousPhoto;
       return;
     }
     profileDisplayName.textContent = name || "이름을 적어 주세요";
     showPhoto(profilePhoto, profilePlaceholder, photo);
+    renderFrogBar();
+    updateSectionTitles();
     showProfileSaved();
   } catch (error) {
     window.alert("사진을 읽지 못했어요. 다른 사진을 골라 주세요.");
@@ -318,6 +450,99 @@ function makeId() {
   return String(Date.now()) + "-" + Math.random().toString(36).slice(2, 8);
 }
 
+function selectFrog(id) {
+  if (id === selectedId) {
+    return;
+  }
+  if (!commitProfileName()) {
+    return;
+  }
+  const previousId = selectedId;
+  selectedId = id;
+  profile = currentFrog();
+  if (!saveFrogs()) {
+    selectedId = previousId;
+    profile = currentFrog();
+    return;
+  }
+  profileSaved.hidden = true;
+  resetDiaryForm();
+  formMessage.hidden = true;
+  renderProfile();
+  renderEntries();
+}
+
+function addFrog() {
+  if (frogs.length >= MAX_FROGS) {
+    window.alert("개구리는 10마리까지만 등록할 수 있어요.");
+    return;
+  }
+  if (!commitProfileName()) {
+    return;
+  }
+  const previousId = selectedId;
+  const frog = normalizeFrog({ id: makeId(), name: "", photo: null });
+  frogs.push(frog);
+  selectedId = frog.id;
+  profile = frog;
+  if (!saveFrogs()) {
+    frogs.pop();
+    selectedId = previousId;
+    profile = currentFrog();
+    return;
+  }
+  profileSaved.hidden = true;
+  resetDiaryForm();
+  formMessage.hidden = true;
+  renderProfile();
+  renderEntries();
+  profileNameInput.focus();
+}
+
+function deleteCurrentFrog() {
+  if (frogs.length <= 1) {
+    return;
+  }
+  const ok = window.confirm("이 개구리를 지울까요? 이 개구리의 사육 일기도 함께 지워져요.");
+  if (!ok) {
+    return;
+  }
+
+  const removedId = selectedId;
+  const previousFrogs = frogs.slice();
+  const previousId = selectedId;
+  const previousEntries = loadAllEntries();
+  const remainingEntries = previousEntries.filter(function (entry) {
+    return entry.frogId !== removedId;
+  });
+
+  frogs = frogs.filter(function (frog) {
+    return frog.id !== removedId;
+  });
+  selectedId = frogs[0].id;
+  profile = currentFrog();
+
+  if (!saveFrogs()) {
+    frogs = previousFrogs;
+    selectedId = previousId;
+    profile = currentFrog();
+    return;
+  }
+  if (!writeJson(STORAGE_KEYS.entries, remainingEntries)) {
+    frogs = previousFrogs;
+    selectedId = previousId;
+    profile = currentFrog();
+    saveFrogs();
+    return;
+  }
+
+  profileSaved.hidden = true;
+  resetDiaryForm();
+  formMessage.hidden = true;
+  renderProfile();
+  renderEntries();
+}
+
 function showFormMessage(text, isError) {
   formMessage.hidden = false;
   formMessage.textContent = text;
@@ -325,6 +550,7 @@ function showFormMessage(text, isError) {
 }
 
 function resetDiaryForm() {
+  entryPhotoToken += 1;
   diaryForm.reset();
   entryDateInput.value = todayString();
   entryPhotoData = null;
@@ -389,6 +615,7 @@ function onDiarySubmit(event) {
   const entries = loadEntries();
   entries.push({
     id: makeId(),
+    frogId: currentFrog().id,
     date: date,
     photo: entryPhotoData,
     food: food,
@@ -430,9 +657,12 @@ profileNameInput.addEventListener("keydown", function (event) {
   }
 });
 profilePhotoInput.addEventListener("change", onProfilePhotoChange);
+addFrogButton.addEventListener("click", addFrog);
+deleteFrogButton.addEventListener("click", deleteCurrentFrog);
 entryPhotoInput.addEventListener("change", onEntryPhotoChange);
 diaryForm.addEventListener("submit", onDiarySubmit);
 
 entryDateInput.value = todayString();
+loadFrogs();
 renderProfile();
 renderEntries();
